@@ -31,7 +31,7 @@ func createRevisionFile(t *testing.T, path string, rev string) {
 
 func removeRevisionFile(t *testing.T, path string) {
 	err := os.Remove(path)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
 }
@@ -71,7 +71,33 @@ func TestGetRevisionWithoutFile(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	if body != "REVISION_FILE_NOT_FOUND" {
-		t.Errorf("Expected REVISION_FILE_NOT_FOUND response body, but got %s", body)
+		t.Errorf("Expected response body 'REVISION_FILE_NOT_FOUND', but got %s", body)
+	}
+}
+
+func TestHeadRevisionWithRemovedFile(t *testing.T) {
+	createRevisionFile(t, "REVISION", "deadbeef")
+	defer removeRevisionFile(t, "REVISION")
+	h := New("")
+
+	r1 := runServer(t, h, "HEAD")
+	if r1.Code != 200 {
+		t.Errorf("Expected status code 200, but got %d", r1.Code)
+	}
+	b1 := r1.Body.String()
+	if b1 != "" {
+		t.Errorf("Expected empty esponse body, but got %s", b1)
+	}
+
+	removeRevisionFile(t, "REVISION")
+
+	r2 := runServer(t, h, "HEAD")
+	if r2.Code != 404 {
+		t.Errorf("Expected status code 404, but got %d", r2.Code)
+	}
+	b2 := r2.Body.String()
+	if b2 != "" {
+		t.Errorf("Expected empty esponse body, but got %s", b2)
 	}
 }
 
@@ -83,6 +109,32 @@ func TestHeadRevisionWithoutFile(t *testing.T) {
 	body := recorder.Body.String()
 	if body != "" {
 		t.Errorf("Expected empty response body, but got %s", body)
+	}
+}
+
+func TestGetRevisionWithRemovedFile(t *testing.T) {
+	createRevisionFile(t, "REVISION", "deadbeef")
+	defer removeRevisionFile(t, "REVISION")
+	h := New("")
+
+	r1 := runServer(t, h, "GET")
+	if r1.Code != 200 {
+		t.Errorf("Expected status code 200, but got %d", r1.Code)
+	}
+	b1 := r1.Body.String()
+	if b1 != "deadbeef" {
+		t.Errorf("Expected esponse body 'deadbeef', but got %s", b1)
+	}
+
+	removeRevisionFile(t, "REVISION")
+
+	r2 := runServer(t, h, "GET")
+	if r2.Code != 404 {
+		t.Errorf("Expected status code 404, but got %d", r2.Code)
+	}
+	b2 := r2.Body.String()
+	if b2 != "REVISION_FILE_REMOVED" {
+		t.Errorf("Expected esponse body 'REVISION_FILE_REMOVED', but got %s", b2)
 	}
 }
 

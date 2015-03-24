@@ -31,7 +31,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 			if r.Method == "GET" {
-				w.Write([]byte("REVISION_FILE_NOT_FOUND"))
+				w.Write([]byte(err.Error()))
 			}
 		}
 	}
@@ -52,13 +52,13 @@ func (h *Handler) readCurrentRevision() {
 
 func (h *Handler) getCurrentRevision() ([]byte, error) {
 	if h.revision == nil {
-		return nil, errors.New("REVISION file didn't exist at startup")
+		return nil, errors.New("REVISION_FILE_NOT_FOUND")
 	} else {
 		_, err := os.Stat(h.revisionFilePath())
 		if err == nil {
 			return h.revision, nil
 		} else {
-			return nil, err
+			return nil, errors.New("REVISION_FILE_REMOVED")
 		}
 	}
 }
